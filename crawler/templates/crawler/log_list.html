@@ -1,0 +1,247 @@
+{% extends 'crawler/base.html' %}
+{% load static %}
+
+{% block title %}System Logs - Telecrawl{% endblock %}
+
+{% block extra_css %}
+<style>
+    .log-entry {
+        border-left: 4px solid;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 0 4px 4px 0;
+    }
+    .log-entry.info { border-left-color: #007bff; background-color: #f8f9fa; }
+    .log-entry.warning { border-left-color: #ffc107; background-color: #fff3cd; }
+    .log-entry.error { border-left-color: #dc3545; background-color: #f8d7da; }
+    .log-entry.debug { border-left-color: #6c757d; background-color: #e9ecef; }
+    .log-timestamp { font-size: 0.85em; color: #6c757d; }
+    .log-module { font-weight: bold; color: #495057; }
+    .log-message { margin-top: 5px; }
+    .filter-section { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-list-alt"></i> System Logs</h2>
+        <div>
+            <a href="{% url 'crawler:dashboard' %}" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-section">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label for="level" class="form-label">Log Level</label>
+                <select name="level" id="level" class="form-select">
+                    <option value="">All Levels</option>
+                    {% for level_code, level_name in available_levels %}
+                        <option value="{{ level_code }}" {% if level == level_code %}selected{% endif %}>
+                            {{ level_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="module" class="form-label">Module</label>
+                <select name="module" id="module" class="form-select">
+                    <option value="">All Modules</option>
+                    {% for mod in available_modules %}
+                        <option value="{{ mod }}" {% if module == mod %}selected{% endif %}>
+                            {{ mod }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary me-2">
+                    <i class="fas fa-filter"></i> Filter
+                </button>
+                <a href="{% url 'crawler:log_list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-times"></i> Clear
+                </a>
+            </div>
+            <div class="col-md-3 d-flex align-items-end justify-content-end">
+                <small class="text-muted">
+                    Total: {{ page_obj.paginator.count }} logs
+                </small>
+            </div>
+        </form>
+    </div>
+
+    <!-- Log Entries -->
+    <div class="row">
+        <div class="col-12">
+            {% if page_obj.object_list %}
+                {% for log in page_obj.object_list %}
+                    <div class="log-entry {{ log.level|lower }}">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center mb-2">
+                                    <span class="badge bg-{{ log.level|lower }} me-2">
+                                        {% if log.level == 'error' %}
+                                            <i class="fas fa-exclamation-triangle"></i>
+                                        {% elif log.level == 'warning' %}
+                                            <i class="fas fa-exclamation-circle"></i>
+                                        {% elif log.level == 'info' %}
+                                            <i class="fas fa-info-circle"></i>
+                                        {% else %}
+                                            <i class="fas fa-bug"></i>
+                                        {% endif %}
+                                        {{ log.get_level_display }}
+                                    </span>
+                                    <span class="log-module">{{ log.module }}</span>
+                                    <span class="log-timestamp ms-auto">
+                                        <i class="fas fa-clock"></i> {{ log.timestamp|date:"M d, Y H:i:s" }}
+                                    </span>
+                                </div>
+                                <div class="log-message">
+                                    {{ log.message }}
+                                </div>                                {% if log.extra_data %}
+                                    <div class="mt-2">
+                                        <small class="text-muted">
+                                            <strong>Additional Data:</strong>
+                                            <pre class="mt-1 p-2 bg-light border rounded" style="font-size: 0.8em;">{{ log.extra_data }}</pre>
+                                        </small>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+
+                <!-- Pagination -->
+                {% if page_obj.has_other_pages %}
+                    <nav aria-label="Log pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1{% if level %}&level={{ level }}{% endif %}{% if module %}&module={{ module }}{% endif %}">First</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if level %}&level={{ level }}{% endif %}{% if module %}&module={{ module }}{% endif %}">Previous</a>
+                                </li>
+                            {% endif %}
+
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                                </span>
+                            </li>
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if level %}&level={{ level }}{% endif %}{% if module %}&module={{ module }}{% endif %}">Next</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if level %}&level={{ level }}{% endif %}{% if module %}&module={{ module }}{% endif %}">Last</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle fa-2x mb-3"></i>
+                    <h5>No logs found</h5>
+                    <p class="mb-0">
+                        {% if level or module %}
+                            No logs match your current filters. Try adjusting your search criteria.
+                        {% else %}
+                            No system logs have been recorded yet.
+                        {% endif %}
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Log Statistics -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-bar"></i> Log Statistics
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <div class="p-3">
+                                <h3 class="text-danger">{{ page_obj.paginator.count|default:0 }}</h3>
+                                <small class="text-muted">Total Logs</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-3">
+                                <h3 class="text-danger">-</h3>
+                                <small class="text-muted">Error Logs</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-3">
+                                <h3 class="text-warning">-</h3>
+                                <small class="text-muted">Warning Logs</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-3">
+                                <h3 class="text-info">-</h3>
+                                <small class="text-muted">Info Logs</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Auto-refresh logs every 10 seconds if crawler is running
+    let autoRefreshInterval;
+    function startAutoRefresh() {
+        fetch('/api/crawler-status/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.is_running) {
+                    autoRefreshInterval = setInterval(() => {
+                        location.reload();
+                    }, 10000); 
+                    
+                    const indicator = `
+                        <div class="alert alert-info alert-dismissible" id="auto-refresh-alert">
+                            <i class="fas fa-sync-alt fa-spin"></i> 
+                            Auto-refresh aktif (Crawler çalışıyor) - Her 10 saniyede bir yenileniyor
+                            <button type="button" class="btn-close" onclick="stopAutoRefresh()"></button>
+                        </div>
+                    `;
+                    $('.container-fluid').prepend(indicator);
+                }
+            })
+            .catch(error => console.log('Status check failed:', error));
+    }
+    
+    function stopAutoRefresh() {
+        if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+            autoRefreshInterval = null;
+        }
+        $('#auto-refresh-alert').remove();
+    }
+    $(document).ready(function() {
+        startAutoRefresh();
+    });
+    $(window).on('beforeunload', function() {
+        stopAutoRefresh();
+    });
+</script>
+{% endblock %}

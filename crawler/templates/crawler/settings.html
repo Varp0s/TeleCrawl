@@ -1,0 +1,521 @@
+{% extends 'crawler/base.html' %}
+{% load static %}
+
+{% block title %}Crawler Settings{% endblock %}
+
+{% block extra_css %}
+<style>
+    .settings-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    .card {
+        margin-bottom: 20px;
+        border: none;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .card-header {
+        background-color: #007bff;
+        color: white;
+        font-weight: 600;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .status-badge {
+        font-size: 14px;
+        padding: 8px 16px;
+    }
+    
+    .status-running {
+        background-color: #28a745;
+        color: white;
+    }
+    
+    .status-stopped {
+        background-color: #dc3545;
+        color: white;
+    }
+    
+    .btn-action {
+        margin-right: 10px;
+        margin-bottom: 10px;
+    }
+    
+    .crawler-info {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+    
+    .info-item {
+        margin-bottom: 8px;
+    }
+    
+    .info-label {
+        font-weight: 600;
+        color: #495057;
+    }
+      .loading {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+    
+    .keyword-card {
+        border: 1px solid #2982db;
+        transition: all 0.3s ease;
+        color: #000;
+    }
+    
+    .keyword-card:hover {
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transform: translateY(-1px);
+    }
+    
+    .keyword-card .card-body {
+        padding: 8px 12px;
+    }
+    
+    .badge {
+        font-size: 0.85em;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="settings-container">    <h2 class="mb-4">
+        <i class="fas fa-cog"></i> Crawler Settings
+    </h2>
+    
+    <!-- Crawler Status Card -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-robot"></i> Crawler Status
+        </div>
+        <div class="card-body">
+            <div class="crawler-info" id="crawler-info">                <div class="info-item">
+                    <span class="info-label">Status:</span>
+                    <span class="badge status-badge" id="status-badge">
+                        {% if crawler_status.is_running %}
+                            <span class="status-running">Running</span>
+                        {% else %}
+                            <span class="status-stopped">Stopped</span>
+                        {% endif %}
+                    </span>
+                </div>
+                
+                <div class="info-item" id="process-info" {% if not crawler_status.process_id %}style="display: none;"{% endif %}>
+                    <span class="info-label">Process ID:</span>
+                    <span id="process-id">{{ crawler_status.process_id|default:"-" }}</span>
+                </div>
+                
+                <div class="info-item" id="started-info" {% if not crawler_status.started_at %}style="display: none;"{% endif %}>
+                    <span class="info-label">Started At:</span>
+                    <span id="started-at">{{ crawler_status.started_at|date:"d.m.Y H:i:s"|default:"-" }}</span>
+                </div>
+                  <div class="info-item">
+                    <span class="info-label">Messages Processed:</span>
+                    <span id="messages-processed">{{ crawler_status.messages_processed|default:0 }}</span>
+                </div>
+                
+                <div class="info-item">
+                    <span class="info-label">Channels Processed:</span>
+                    <span id="channels-processed">{{ crawler_status.channels_processed|default:0 }}</span>
+                </div>
+                
+                <div class="info-item" id="error-info" {% if not crawler_status.error_message %}style="display: none;"{% endif %}>
+                    <span class="info-label">Error:</span>
+                    <span id="error-message" class="text-danger">{{ crawler_status.error_message }}</span>
+                </div>
+            </div>
+            
+            <div class="mt-3">
+                <button type="button" class="btn btn-success btn-action" id="start-btn" 
+                        {% if crawler_status.is_running %}disabled{% endif %}>
+                    <i class="fas fa-play"></i> Start Crawler
+                </button>
+                  <button type="button" class="btn btn-danger btn-action" id="stop-btn"
+                        {% if not crawler_status.is_running %}disabled{% endif %}>
+                    <i class="fas fa-stop"></i> Stop Crawler
+                </button>
+                
+                <button type="button" class="btn btn-info btn-action" id="refresh-btn">
+                    <i class="fas fa-sync-alt"></i> Refresh Status
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- API Settings Card -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-key"></i> Telegram API Settings
+        </div>
+        <div class="card-body">                
+            <form method="post" action="{% url 'crawler:settings' %}" id="settings-form">
+                {% csrf_token %}
+                
+                <div class="form-group">
+                    <label for="api_id" class="form-label">
+                        <i class="fas fa-hashtag"></i> API ID
+                    </label>
+                    <input type="text" class="form-control" id="api_id" name="api_id" 
+                           value="{{ api_id }}" placeholder="Telegram API ID'nizi girin">
+                    <small class="form-text text-muted">
+                        Telegram API ID'nizi my.telegram.org adresinden alabilirsiniz.
+                    </small>
+                </div>
+                  <div class="form-group">
+                    <label for="api_hash" class="form-label">
+                        <i class="fas fa-lock"></i> API Hash
+                    </label>
+                    <input type="text" class="form-control" id="api_hash" name="api_hash" 
+                           value="{{ api_hash }}" placeholder="Enter your Telegram API Hash">
+                    <small class="form-text text-muted">
+                        You can get your Telegram API Hash from my.telegram.org.
+                    </small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="phone" class="form-label">
+                        <i class="fas fa-phone"></i> Phone Number
+                    </label>
+                    <input type="text" class="form-control" id="phone" name="phone" 
+                           value="{{ phone }}" placeholder="+1xxxxxxxxxx">
+                    <small class="form-text text-muted">
+                        Enter your phone number associated with your Telegram account (with country code).
+                    </small>
+                </div>
+                
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save Settings
+                    </button>
+                </div>
+            </form>
+        </div>    </div>
+      <!-- Keyword Management -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-key"></i> Keyword Management
+        </div>
+        <div class="card-body">
+            <p class="text-muted">
+                Manage keywords used for message classification. 
+                <a href="/admin/crawler/messagekeyword/" target="_blank">
+                    <i class="fas fa-external-link-alt"></i> Use admin panel for detailed management
+                </a>
+            </p>
+            
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="form-group">
+                        <label for="new-keyword">Add New Keyword:</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="new-keyword" placeholder="Enter keyword...">
+                            <select class="form-control" id="keyword-type">                                
+                                <option value="security">Security</option>
+                                <option value="vulnerability">Vulnerability</option>
+                                <option value="exploit">Exploit</option>
+                                <option value="domain">Domain</option>
+                                <option value="other">Other</option>
+                            </select>
+                            <div class="input-group-append">
+                                <button class="btn btn-success" type="button" id="add-keyword-btn">
+                                    <i class="fas fa-plus"></i> Add
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-3">
+                <h6>Current Keywords:</h6>
+                <div id="keywords-list" class="mt-2">
+                    <div class="text-center">
+                        <i class="fas fa-spinner fa-spin"></i> Loading...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+      <!-- Help Card -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-question-circle"></i> Help
+        </div>
+        <div class="card-body">
+            <h6>How to Get Telegram API Settings?</h6>
+            <ol>
+                <li>Go to <a href="https://my.telegram.org" target="_blank">my.telegram.org</a></li>
+                <li>Login with your phone number</li>
+                <li>Click on "API development tools" section</li>
+                <li>Create an application and copy the API ID and API Hash</li>
+                <li>Paste them into the relevant fields on this page</li>
+            </ol>
+            
+            <div class="alert alert-warning mt-3">
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Important:</strong> Do not share your API information with anyone and keep it secure.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    let isLoading = false;
+    function refreshStatus() {
+        if (isLoading) return;
+        
+        isLoading = true;
+        $('#refresh-btn i').addClass('fa-spin');
+        
+        $.get('{% url "crawler:crawler_status_api" %}')
+            .done(function(data) {
+                updateStatusDisplay(data);
+            })
+            .fail(function() {
+                showAlert('Could not retrieve status information!', 'danger');
+            })
+            .always(function() {
+                isLoading = false;
+                $('#refresh-btn i').removeClass('fa-spin');
+            });
+    }
+    
+    function updateStatusDisplay(data) {
+        const statusBadge = $('#status-badge');if (data.is_running) {
+            statusBadge.html('<span class="status-running">Running</span>');
+        } else {
+            statusBadge.html('<span class="status-stopped">Stopped</span>');
+        }
+        $('#start-btn').prop('disabled', data.is_running);
+        $('#stop-btn').prop('disabled', !data.is_running);
+        $('#process-id').text(data.process_id || '-');
+        $('#messages-processed').text(data.messages_processed || 0);
+        $('#channels-processed').text(data.channels_processed || 0);
+        
+        if (data.process_id) {
+            $('#process-info').show();
+        } else {
+            $('#process-info').hide();
+        }
+        
+        if (data.started_at) {
+            $('#started-at').text(new Date(data.started_at).toLocaleString('tr-TR'));
+            $('#started-info').show();
+        } else {
+            $('#started-info').hide();
+        }
+        if (data.error_message) {
+            $('#error-message').text(data.error_message);
+            $('#error-info').show();
+        } else {
+            $('#error-info').hide();
+        }
+    }
+    
+    function showAlert(message, type) {
+        const alertHtml = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+        $('.settings-container').prepend(alertHtml);
+        
+        setTimeout(function() {
+            $('.alert').fadeOut();
+        }, 5000);
+    }
+    
+    $('#start-btn').click(function() {
+        if (isLoading) return;
+        const $btn = $(this);
+        const originalText = $btn.html();
+          $btn.html('<i class="fas fa-spinner fa-spin"></i> Starting...').prop('disabled', true);
+        $.post('{% url "crawler:start_crawler" %}')
+            .done(function(data) {
+                if (data.success) {
+                    showAlert(data.message, 'success');
+                    setTimeout(refreshStatus, 1000);
+                } else {
+                    showAlert(data.message, 'danger');
+                }
+            })
+            .fail(function() {
+                showAlert('Could not start crawler!', 'danger');
+            })
+            .always(function() {
+                $btn.html(originalText).prop('disabled', false);
+            });
+    });
+    
+    $('#stop-btn').click(function() {
+        if (isLoading) return;
+        
+        const $btn = $(this);
+        const originalText = $btn.html();
+          $btn.html('<i class="fas fa-spinner fa-spin"></i> Stopping...').prop('disabled', true);
+        
+        $.post('{% url "crawler:stop_crawler" %}')
+            .done(function(data) {
+                if (data.success) {
+                    showAlert(data.message, 'success');
+                    setTimeout(refreshStatus, 1000);
+                } else {
+                    showAlert(data.message, 'danger');
+                }
+            })
+            .fail(function() {
+                showAlert('Could not stop crawler!', 'danger');
+            })
+            .always(function() {
+                $btn.html(originalText).prop('disabled', false);
+            });
+    });
+    $('#refresh-btn').click(refreshStatus);
+    refreshStatus();
+    setInterval(refreshStatus, 30000);   
+    function loadKeywords() {
+        $.get('{% url "crawler:keywords_api" %}')
+            .done(function(data) {
+                displayKeywords(data.keywords);
+            })
+            .fail(function() {
+                $('#keywords-list').html('<div class="alert alert-danger">Keywords could not be loaded!</div>');
+            });
+    }
+    
+    function displayKeywords(keywords) {        
+        let html = '';
+        if (keywords.length === 0) {
+            html = '<div class="alert alert-info">No keywords found yet.</div>';
+        } else {
+            html = '<div class="row" style="color: #000;">';
+            keywords.forEach(function(kw) {
+                const typeColors = {
+                    'security': 'primary',
+                    'vulnerability': 'danger', 
+                    'exploit': 'warning',
+                    'domain': 'info',
+                    'other': 'secondary'
+                };
+                const color = typeColors[kw.keyword_type] || 'secondary';
+                const status = kw.is_active ? 'Active' : 'Inactive';
+                const statusColor = kw.is_active ? 'success' : 'muted';
+                
+                html += `
+                    <div class="col-md-6 mb-2">
+                        <div class="card keyword-card">
+                            <div class="card-body p-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <span class="text-${statusColor}" >${kw.keyword}</span>
+                                        <small class="text-${statusColor} ml-1">${status}</small>
+                                    </div>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-sm btn-${kw.is_active ? 'warning' : 'success'}" 
+                                                onclick="toggleKeyword(${kw.id}, ${!kw.is_active})">
+                                            <i class="fas fa-${kw.is_active ? 'pause' : 'play'}"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteKeyword(${kw.id})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+        $('#keywords-list').html(html);
+    }      function toggleKeyword(id, isActive) {
+        $.post('{% url "crawler:toggle_keyword_api" %}', {
+            'id': id,
+            'is_active': isActive,
+            'csrfmiddlewaretoken': $('[name=csrfmiddlewaretoken]').val()
+        })
+        .done(function(data) {
+            if (data.success) {
+                loadKeywords();
+                showAlert(data.message, 'success');
+            } else {
+                showAlert(data.message, 'danger');
+            }            })
+            .fail(function() {
+                showAlert('Could not change keyword status!', 'danger');
+            });
+    }      function deleteKeyword(id) {
+        if (confirm('Are you sure you want to delete this keyword?')) {
+            $.post('{% url "crawler:delete_keyword_api" %}', {
+                'id': id,
+                'csrfmiddlewaretoken': $('[name=csrfmiddlewaretoken]').val()
+            })
+            .done(function(data) {
+                if (data.success) {
+                    loadKeywords();
+                    showAlert(data.message, 'success');
+                } else {
+                    showAlert(data.message, 'danger');
+                }
+            })
+            .fail(function() {
+                showAlert('Anahtar kelime silinemedi!', 'danger');
+            });
+        }
+    }
+    
+    $('#add-keyword-btn').click(function() {
+        const keyword = $('#new-keyword').val().trim();
+        const keywordType = $('#keyword-type').val();
+          if (!keyword) {
+            showAlert('Please enter a keyword!', 'warning');
+            return;
+        }
+        
+        const $btn = $(this);
+        const originalText = $btn.html();
+        $btn.html('<i class="fas fa-spinner fa-spin"></i> Adding...').prop('disabled', true);
+          $.post('{% url "crawler:add_keyword_api" %}', {
+            'keyword': keyword,
+            'keyword_type': keywordType,
+            'csrfmiddlewaretoken': $('[name=csrfmiddlewaretoken]').val()
+        })
+        .done(function(data) {
+            if (data.success) {
+                $('#new-keyword').val('');
+                loadKeywords();
+                showAlert(data.message, 'success');
+            } else {
+                showAlert(data.message, 'danger');
+            }
+        })
+        .fail(function() {
+            showAlert('Anahtar kelime eklenemedi!', 'danger');
+        })
+        .always(function() {
+            $btn.html(originalText).prop('disabled', false);
+        });
+    });
+    
+    $('#new-keyword').keypress(function(e) {
+        if (e.which === 13) {
+            $('#add-keyword-btn').click();
+        }
+    });
+    loadKeywords();
+});
+</script>
+{% endblock %}

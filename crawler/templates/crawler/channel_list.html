@@ -1,0 +1,202 @@
+{% extends 'crawler/base.html' %}
+
+{% block title %}Channels - Telecrawl{% endblock %}
+
+{% block extra_css %}
+<style>
+    .export-dropdown {
+        min-width: 200px;
+    }
+    
+    .export-dropdown .dropdown-item {
+        padding: 8px 16px;
+    }
+    
+    .export-dropdown .dropdown-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .export-dropdown .dropdown-item i {
+        width: 16px;
+        margin-right: 8px;
+    }
+    
+    .bulk-export-section {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-satellite-dish"></i> Telegram Channels
+        </h1>
+    </div>
+</div>
+
+<!-- Bulk Export Section -->
+<div class="row">
+    <div class="col-12">
+        <div class="bulk-export-section">            <h5><i class="fas fa-download"></i> Bulk PDF Export</h5>
+            <p class="text-muted mb-3">You can download PDF reports for all channels' messages at once.</p>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-outline-primary" onclick="bulkExport('all')">
+                    <i class="fas fa-file-pdf"></i> Export All Messages
+                </button>
+                <button type="button" class="btn btn-outline-success" onclick="bulkExport('relevant')">
+                    <i class="fas fa-check-circle"></i> Export Only Relevant Messages
+                </button>
+                <button type="button" class="btn btn-outline-danger" onclick="bulkExport('irrelevant')">
+                    <i class="fas fa-times-circle"></i> Export Only Irrelevant Messages
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                {% if channels %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">                            
+                            <thead>
+                                <tr>
+                                    <th>Channel Name</th>
+                                    <th>Channel ID</th>
+                                    <th>Username</th>
+                                    <th>Message Count</th>
+                                    <th>Status</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for channel in channels %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ channel.channel_name }}</strong>
+                                    </td>
+                                    <td>
+                                        <code>{{ channel.channel_id }}</code>
+                                    </td>
+                                    <td>
+                                        {% if channel.username %}
+                                            <span class="text-muted">@{{ channel.username }}</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ channel.message_count }}</span>
+                                    </td>
+                                    <td>                                        {% if channel.is_active %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check"></i> Active
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">
+                                                <i class="fas fa-pause"></i> Inactive
+                                            </span>
+                                        {% endif %}</td>
+                                    <td>{{ channel.created_at|date:"d.m.Y H:i" }}</td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <button type="button" class="btn btn-sm btn-outline-primary dropdown-toggle export-dropdown" 
+                                                    data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="fas fa-file-pdf"></i> PDF Export
+                                            </button>                                            <ul class="dropdown-menu export-dropdown">
+                                                <li><a class="dropdown-item" href="{% url 'crawler:export_channel_pdf' channel.id %}">
+                                                    <i class="fas fa-file-pdf"></i> All Messages
+                                                </a></li>
+                                                <li><a class="dropdown-item" href="{% url 'crawler:export_channel_pdf' channel.id %}?classification=relevant">
+                                                    <i class="fas fa-check-circle"></i> Only Relevant Messages
+                                                </a></li>
+                                                <li><a class="dropdown-item" href="{% url 'crawler:export_channel_pdf' channel.id %}?classification=irrelevant">
+                                                    <i class="fas fa-times-circle"></i> Only Irrelevant Messages
+                                                </a></li>
+                                            </ul>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-satellite-dish fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No channels found yet</h5>
+                        <p class="text-muted">Channels will be automatically added when the Telecrawl is started.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function bulkExport(classification) {
+    const buttons = document.querySelectorAll('.bulk-export-section .btn');
+    const clickedButton = event.target;
+    
+    buttons.forEach(btn => btn.disabled = true);
+    clickedButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing...';
+    const channelRows = document.querySelectorAll('tbody tr');
+    const downloadUrls = [];
+    
+    channelRows.forEach(row => {
+        const buttons = row.querySelectorAll('.dropdown-menu a');
+        if (buttons.length > 0) {
+            let baseUrl = buttons[0].href.replace('?classification=relevant', '').replace('?classification=irrelevant', '');
+            if (classification !== 'all') {
+                baseUrl += '?classification=' + classification;
+            }
+            downloadUrls.push(baseUrl);
+        }
+    });
+    
+    downloadUrls.forEach((url, index) => {
+        setTimeout(() => {
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = '';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            if (index === downloadUrls.length - 1) {
+                setTimeout(() => {
+                    buttons.forEach(btn => btn.disabled = false);
+                    
+                    const icons = {
+                        'all': '<i class="fas fa-file-pdf"></i> Export All Messages',
+                        'relevant': '<i class="fas fa-check-circle"></i> Export Only Relevant Messages',
+                        'irrelevant': '<i class="fas fa-times-circle"></i> Export Only Irrelevant Messages'
+                    };
+                    
+                    clickedButton.innerHTML = icons[classification];
+                    
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-success alert-dismissible fade show';
+                    alertDiv.innerHTML = `
+                        <i class="fas fa-check"></i> ${downloadUrls.length} channel PDF export process started!
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    `;
+                    document.querySelector('.bulk-export-section').insertAdjacentElement('beforebegin', alertDiv);
+                    
+                    setTimeout(() => alertDiv.remove(), 5000);
+                }, 1000);
+            }
+        }, index * 500);
+    });
+}
+</script>
+{% endblock %}

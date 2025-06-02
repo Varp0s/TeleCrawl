@@ -1,0 +1,242 @@
+{% extends 'crawler/base.html' %}
+
+{% block title %}Dashboard - Telecrawl{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-tachometer-alt"></i> Dashboard
+        </h1>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">                    
+                    <div>
+                        <h4>{{ total_messages }}</h4>
+                        <p class="mb-0">Total Messages</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-comments fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">                    
+                    <div>
+                        <h4>{{ relevant_messages }}</h4>
+                        <p class="mb-0">Relevant Messages</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-check-circle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ irrelevant_messages }}</h4>
+                        <p class="mb-0">Irrelevant Messages</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-times-circle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">                    
+                    <div>
+                        <h4>{{ active_channels }}</h4>
+                        <p class="mb-0">Active Channels</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-satellite-dish fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card bg-secondary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ archived_urls }}</h4>
+                        <p class="mb-0">Archived URLs</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-archive fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card bg-dark text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ pending_urls }}</h4>
+                        <p class="mb-0">Bekleyen URL</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-clock fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-rocket"></i> Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-2">
+                        <a href="{% url 'crawler:message_list' %}" class="btn btn-outline-primary btn-block w-100">
+                            <i class="fas fa-comments"></i> View Messages
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{% url 'crawler:channel_list' %}" class="btn btn-outline-info btn-block w-100">
+                            <i class="fas fa-satellite-dish"></i> Manage Channels
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{% url 'crawler:archived_url_list' %}" class="btn btn-outline-success btn-block w-100">
+                            <i class="fas fa-archive"></i> Archived URLs
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{% url 'crawler:log_list' %}" class="btn btn-outline-warning btn-block w-100">
+                            <i class="fas fa-list-alt"></i> System Logs
+                        </a>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-md-6 mb-2">
+                        <a href="/admin/" class="btn btn-outline-secondary btn-block w-100">
+                            <i class="fas fa-cog"></i> Admin Panel
+                        </a>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <button class="btn btn-outline-dark btn-block w-100" onclick="location.reload()">
+                            <i class="fas fa-sync-alt"></i> Refresh Dashboard
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-clock"></i> Recent Messages</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_messages %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>                                
+                                <tr>
+                                    <th>Channel</th>
+                                    <th>Classification</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for message in recent_messages %}
+                                <tr>
+                                    <td>{{ message.channel.channel_name|truncatechars:20 }}</td>
+                                    <td>
+                                        {% if message.classification == 'relevant' %}
+                                            <span class="badge bg-success">Relevant</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">Irrelevant</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ message.timestamp|date:"d.m.Y H:i" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No messages found yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-list"></i> Son Loglar</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_logs %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Level</th>
+                                    <th>Module</th>
+                                    <th>Message</th>
+                                    <th>Tarih</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in recent_logs %}
+                                <tr>
+                                    <td>
+                                        {% if log.level == 'ERROR' %}
+                                            <span class="badge bg-danger">{{ log.level }}</span>
+                                        {% elif log.level == 'WARNING' %}
+                                            <span class="badge bg-warning">{{ log.level }}</span>
+                                        {% elif log.level == 'INFO' %}
+                                            <span class="badge bg-info">{{ log.level }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ log.level }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ log.module }}</td>
+                                    <td>{{ log.message|truncatechars:30 }}</td>
+                                    <td>{{ log.timestamp|date:"d.m H:i" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No logs found yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

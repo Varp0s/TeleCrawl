@@ -1,0 +1,269 @@
+{% extends 'crawler/base.html' %}
+{% load static %}
+
+{% block title %}Archived URLs - Telecrawl{% endblock %}
+
+{% block extra_css %}
+<style>
+    .url-card {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        transition: box-shadow 0.2s;
+    }
+    .url-card:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .url-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        padding: 12px 15px;
+        border-radius: 7px 7px 0 0;
+    }
+    .url-body {
+        padding: 15px;
+    }
+    .repo-stats {
+        font-size: 0.9em;
+        color: #6c757d;
+    }
+    .archive-status {
+        font-size: 0.85em;
+        font-weight: 500;
+    }
+    .filter-section {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-archive"></i> Archived GitHub URLs</h2>
+        <div>
+            <a href="{% url 'crawler:dashboard' %}" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-section">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label for="is_archived" class="form-label">Archive Status</label>
+                <select name="is_archived" id="is_archived" class="form-select">
+                    <option value="">All Status</option>
+                    <option value="true" {% if is_archived == 'true' %}selected{% endif %}>Archived</option>
+                    <option value="false" {% if is_archived == 'false' %}selected{% endif %}>Pending</option>
+                </select>
+            </div>
+            <div class="col-md-6 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary me-2">
+                    <i class="fas fa-filter"></i> Filter
+                </button>
+                <a href="{% url 'crawler:archived_url_list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-times"></i> Clear
+                </a>
+            </div>
+            <div class="col-md-3 d-flex align-items-end justify-content-end">
+                <small class="text-muted">
+                    Total: {{ page_obj.paginator.count }} URLs
+                </small>
+            </div>
+        </form>
+    </div>
+
+    <!-- URL List -->
+    <div class="row">
+        <div class="col-12">
+            {% if page_obj.object_list %}
+                {% for url in page_obj.object_list %}
+                    <div class="url-card">
+                        <div class="url-header">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center">
+                                    <i class="fab fa-github fa-lg me-2"></i>
+                                    <h5 class="mb-0">
+                                        <a href="{{ url.github_url }}" target="_blank" class="text-decoration-none">
+                                            {{ url.repository_name|default:"Unknown Repository" }}
+                                        </a>
+                                    </h5>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    {% if url.is_archived %}
+                                        <span class="badge bg-success archive-status">
+                                            <i class="fas fa-check"></i> Archived
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-warning archive-status">
+                                            <i class="fas fa-clock"></i> Pending
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="url-body">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="mb-2">
+                                        <strong>GitHub URL:</strong>
+                                        <a href="{{ url.github_url }}" target="_blank" class="text-break">
+                                            {{ url.github_url }}
+                                        </a>
+                                    </div>
+                                    {% if url.description %}
+                                        <div class="mb-2">
+                                            <strong>Description:</strong>
+                                            <p class="text-muted mb-0">{{ url.description }}</p>
+                                        </div>
+                                    {% endif %}
+                                    {% if url.message %}
+                                        <div class="mb-2">
+                                            <strong>Found in Message:</strong>
+                                            <div class="border rounded p-2 bg-light">
+                                                <small>
+                                                    <strong>Channel:</strong> {{ url.message.channel.channel_name }}<br>
+                                                    <strong>Message:</strong> {{ url.message.message_text|truncatechars:100 }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="repo-stats">
+                                        {% if url.stars_count is not None %}
+                                            <div class="mb-1">
+                                                <i class="fas fa-star text-warning"></i>
+                                                <strong>{{ url.stars_count }}</strong> stars
+                                            </div>
+                                        {% endif %}
+                                        {% if url.forks_count is not None %}
+                                            <div class="mb-1">
+                                                <i class="fas fa-code-branch text-info"></i>
+                                                <strong>{{ url.forks_count }}</strong> forks
+                                            </div>
+                                        {% endif %}
+                                        {% if url.language %}
+                                            <div class="mb-1">
+                                                <i class="fas fa-code text-secondary"></i>
+                                                {{ url.language }}
+                                            </div>
+                                        {% endif %}
+                                        <div class="mb-1">
+                                            <i class="fas fa-calendar text-muted"></i>
+                                            <small>Discovered: {{ url.discovered_at|date:"M d, Y" }}</small>
+                                        </div>
+                                        {% if url.processed_at %}
+                                            <div class="mb-1">
+                                                <i class="fas fa-clock text-muted"></i>
+                                                <small>Processed: {{ url.processed_at|date:"M d, Y H:i" }}</small>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% if url.archive_path and url.is_archived %}
+                                <div class="mt-3 p-2 bg-success bg-opacity-10 border border-success rounded">
+                                    <small class="text-success">
+                                        <i class="fas fa-folder"></i>
+                                        <strong>Archive Location:</strong> {{ url.archive_path }}
+                                    </small>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+
+                <!-- Pagination -->
+                {% if page_obj.has_other_pages %}
+                    <nav aria-label="URL pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1{% if is_archived %}&is_archived={{ is_archived }}{% endif %}">First</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if is_archived %}&is_archived={{ is_archived }}{% endif %}">Previous</a>
+                                </li>
+                            {% endif %}
+
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                                </span>
+                            </li>
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if is_archived %}&is_archived={{ is_archived }}{% endif %}">Next</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if is_archived %}&is_archived={{ is_archived }}{% endif %}">Last</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-archive fa-2x mb-3"></i>
+                    <h5>No archived URLs found</h5>
+                    <p class="mb-0">
+                        {% if is_archived %}
+                            No URLs match your current filter. Try adjusting your search criteria.
+                        {% else %}
+                            No GitHub URLs have been discovered and archived yet.
+                        {% endif %}
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Summary Statistics -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-pie"></i> Archive Statistics
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <div class="p-3">
+                                <h3 class="text-primary">{{ page_obj.paginator.count|default:0 }}</h3>
+                                <small class="text-muted">Total URLs</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-3">
+                                <h3 class="text-success">-</h3>
+                                <small class="text-muted">Archived</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-3">
+                                <h3 class="text-warning">-</h3>
+                                <small class="text-muted">Pending</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-3">
+                                <h3 class="text-info">-</h3>
+                                <small class="text-muted">Total Size</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
